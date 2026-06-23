@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Install hooks for the Farm Cattle Breeds module.
+ */
+
+use Drupal\taxonomy\Entity\Term;
+
+/**
+ * Implements hook_install().
+ */
+function farm_cattle_breeds_install() {
+  $vocabulary = 'animal_type';
+  
+  // Force terminal text output to print immediately
+  $messenger = \Drupal::messenger();
+  $messenger->addStatus('Farm Cattle Breeds: Beginning data insertion sequence...');
+
+  try {
+    $storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+
+    // 1. Check or Create 'Cattle' parent category
+    $parent_term = $storage->loadByProperties(['name' => 'Cattle', 'vid' => $vocabulary]);
+
+    if (empty($parent_term)) {
+      $parent = $storage->create([
+        'vid' => $vocabulary,
+        'name' => 'Cattle',
+        'langcode' => 'en', // Explicitly force English to avoid UI filtering issues
+        'description' => [
+          'value' => 'Top level category for cattle assets.',
+          'format' => 'default',
+        ],
+      ]);
+      $parent->save();
+      $parent_id = $parent->id();
+      $messenger->addStatus("Farm Cattle Breeds: Created new parent term ID [{$parent_id}]");
+    } else {
+      $parent = reset($parent_term);
+      $parent_id = $parent->id();
+      $messenger->addStatus("Farm Cattle Breeds: Using existing parent term ID [{$parent_id}]");
+    }
+
+    // 2. Define data array natively to remove filesystem dependency risks
+    $breeds = [
+      'Angus' => 'Beef breed known for high-quality meat production and premium carcass marbling.',
+      'Hereford' => 'Beef breed highly favored for docility, feed efficiency, and crossbreeding viability.',
+      'Charolais' => 'Large-framed French beef breed known for high growth rates and heavy muscling.',
+      'Simmental' => 'Versatile dual-purpose breed providing high milk yields and fast beef growth.',
+      'Brahman' => 'Heat-tolerant Bos indicus breed characterized by a large shoulder hump and loose skin.',
+      'Limousin' => 'Muscular French beef breed known for high meat yield and lean carcass quality.',
+      'Gelbvieh' => 'Triple-purpose German breed utilized for high growth, maternal traits, and milk.',
+      'Brangus' => 'Hardy crossbreed consisting of 5/8 Angus and 3/8 Brahman genetics.',
+      'Holstein' => 'The world highest-producing dairy breed, recognizable by black-and-white markings.',
+      'Jersey' => 'Small dairy breed highly valued for rich milk containing exceptional butterfat content.',
+      'Brown Swiss' => 'Robust dairy breed prized by cheesemakers for an optimal fat-to-protein ratio.',
+      'Guernsey' => 'Dairy breed famous for producing golden-colored milk rich in beta-carotene.',
+      'Ayrshire' => 'Hardy, efficient dairy grazers with strong udders and robust constitution.',
+      'Texas Longhorn' => 'Iconic American breed known for massive horns, extreme hardiness, and longevity.',
+      'Belted Galloway' => 'Hardy Scottish beef breed with a distinct white belt, yielding lean meat.',
+      'Dexter' => 'Small, efficient Irish dual-purpose breed well-suited for small acreage farms.',
+      'Black Baldy' => 'Highly popular beef crossbreed produced by mating black Angus with Hereford cattle, valued for hybrid vigor, exceptional maternal traits, and distinctive white faces.',
+    ];
+
+    // 3. Populate terms
+    $counter = 0;
+    foreach ($breeds as $name => $description) {
+      $existing = $storage->loadByProperties(['name' => $name, 'vid' => $vocabulary]);
+
+      if (empty($existing)) {
+        $term = $storage->create([
+          'vid' => $vocabulary,
+          'name' => $name,
+          'langcode' => 'en', // Explicitly force English to bypass the language filter bug
+          'description' => [
+            'value' => $description,
+            'format' => 'default',
+          ],
+          'parent' => [$parent_id],
+        ]);
+        $term->save();
+        $counter++;
+      }
+    }
+
+    $messenger->addStatus("Farm Cattle Breeds: Successfully inserted {$counter} sub-breeds under parent.");
+
+  } catch (\Exception $e) {
+    $messenger->addError('Farm Cattle Breeds Failed: ' . $e->getMessage());
+    \Drupal::logger('farm_cattle_breeds')->error($e->getMessage());
+  }
+}

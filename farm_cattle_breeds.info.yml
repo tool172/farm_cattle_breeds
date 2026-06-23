@@ -1,0 +1,7 @@
+name: 'Farm Cattle Breeds'
+type: module
+description: 'Automatically provisions a comprehensive set of cattle breeds inside the farmOS Animal Type taxonomy on installation.'
+package: 'farmOS Custom'
+core_version_requirement: ^9 || ^10 || ^11
+dependencies:
+  - farmos:farm_animal
